@@ -3,11 +3,22 @@ import { WebSocket } from 'ws'
 
 const args = process.argv.slice(2)
 
-const response = await runSysCmd("avahi-resolve -n rock-coders-server.local")
-const ip = response.trim().split("\t")[0]
-let serverIp=`ws://${ip}:5000`
-console.log("FOUND SERVER AT: ", ip)
+let serverName = "rock-coders-server.local"
+let serverUrl = await resolveAndFindServer(serverName)
+console.log("FOUND SERVER AT: ", serverUrl)
 
+async function resolveAndFindServer(name) {
+
+    let ip
+    try {
+        const response = await runSysCmd(`avahi-resolve -n ${name}`)
+        ip = response.trim().split("\t")[0]
+    } catch (err) {
+
+    }
+    return `ws://${ip ? ip : name}:5000`
+
+}
 let ws
 function connectToServer(url) {
     ws = new WebSocket(url)
@@ -55,22 +66,22 @@ async function runNode(args) {
 }
 
 
-connectToServer(serverIp)
+connectToServer(serverUrl)
 await runNode(args)
 
 
 
-export async function runSysCmd(cmd,isShow){
-    return new Promise((resolve,reject)=>{
+export async function runSysCmd(cmd, isShow) {
+    return new Promise((resolve, reject) => {
 
-        exec(cmd,(error, stdout, stderr)=>{
-            if(error){
+        exec(cmd, (error, stdout, stderr) => {
+            if (error) {
                 console.log(error)
             }
-            if(stdout) resolve(stdout)
-            if(stderr){
+            if (stdout) resolve(stdout)
+            if (stderr) {
                 console.log(stderr)
-                resolve(stderr)
+                reject(stderr)
             }
         })
     })
