@@ -4,10 +4,11 @@ import { WebSocket } from 'ws'
 const args = process.argv.slice(2)
 
 let serverName = "rock-coders-server.local"
-let serverUrl = await resolveAndFindServer(serverName)
+let avahiUrl = await avahiResolve(serverName)
+
 console.log("FOUND SERVER AT: ", serverUrl)
 
-async function resolveAndFindServer(name) {
+async function avahiResolve(name) {
 
     let ip
     try {
