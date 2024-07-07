@@ -5,19 +5,40 @@ const args = process.argv.slice(2)
 
 let serverName = "rock-coders-server.local"
 let avahiUrl = await avahiResolve(serverName)
+console.log("avahiUrl: ", avahiUrl)
+let digUrl = await digResolve(serverName)
+console.log("digUrl: ", digUrl)
+const serverUrl=avahiUrl
+    ?avahiUrl
+    :digUrl
+        ?digUrl
+        :null
+if(avahiUrl){
+    console.log("UBUNTU SYSTEM DETECTED")
+}else if(digUrl){
 
+    console.log("MACBOOK SYSTEM DETECTED")
+}else{
+    console.log("UNKOWN SYSTEM...")
+}
 console.log("FOUND SERVER AT: ", serverUrl)
+async function digResolve(name) {
 
+    let ip=null
+    try {
+        const response = await runSysCmd(`dig @224.0.0.251 -p 5353 ${name} +short`)
+        ip = response.trim()
+    } catch (err) {}
+    return ip?`ws://${ip}:5000`:null
+
+}
 async function avahiResolve(name) {
-
-    let ip
+    let ip=null
     try {
         const response = await runSysCmd(`avahi-resolve -n ${name}`)
         ip = response.trim().split("\t")[0]
-    } catch (err) {
-
-    }
-    return `ws://${ip ? ip : name}:5000`
+    } catch (err) { }
+    return ip?`ws://${ip}:5000`:null
 
 }
 let ws
@@ -76,12 +97,12 @@ export async function runSysCmd(cmd, isShow) {
     return new Promise((resolve, reject) => {
 
         exec(cmd, (error, stdout, stderr) => {
-            if (error) {
+            if (error && isShow) {
                 console.log(error)
             }
             if (stdout) resolve(stdout)
             if (stderr) {
-                console.log(stderr)
+                if(isShow)console.log(stderr)
                 reject(stderr)
             }
         })
