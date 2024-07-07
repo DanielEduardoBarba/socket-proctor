@@ -1,6 +1,8 @@
 import { readFile, writeFile } from "fs"
 import { initializeSocket } from "./scripts/socket.js"
 import PLAYERSJSON from "./players.json" assert{type: "json"}
+import readline from 'readline'
+import { initializeLogic, terminalPromptCmds } from "./scripts/logic.js"
 
 export const CC = {
     // Reset
@@ -60,6 +62,7 @@ async function initializeServer() {
     const response = await readMyFile("./players.json")
     if(response)DB.PLAYERS=response
 
+    await initializeLogic(DB)
     await initializeSocket(DB)
 }
 
@@ -112,7 +115,13 @@ export function writeMyFile(file, data, type = "json") {
         }
     })
 }
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+})
 
+// Handle incoming commands
+rl.on('line', (input) => terminalPromptCmds(input.trim()))
 
 function clearTerminal() {
     // ANSI escape sequence to clear the screen
@@ -131,9 +140,11 @@ function updateTerminal() {
     let i=0
     for(let uuid in users){
         i++
-        const {name}=users[uuid]
-        const firstName =name.split(" ")[0]
-        playerLine+=`${CC.Cyan}${i}: ${CC.Magenta}${firstName}${CC.Reset}\t`
+        if(users[uuid].isActive){
+            const {name}=users[uuid]
+            const firstName =name.split(" ")[0]
+            playerLine+=`${CC.Cyan}${i}: ${CC.Magenta}${firstName}${CC.Reset}\t`
+        }
     } 
     const ts=Date.now()
     // Print new content or update information

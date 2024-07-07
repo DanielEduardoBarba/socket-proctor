@@ -13,10 +13,10 @@ export async function initializeSocket($DB) {
 function getIP(req) {
     return req.socket.remoteAddress
 }
-
+ let server
 function startServer() {
 
-    const server = new WebSocketServer({ port: 5000 })
+     server = new WebSocketServer({ port: 5000 })
 
     server.on("connection", (client, req) => {
         const client_ip = getIP(req)
@@ -59,10 +59,21 @@ function startServer() {
     })
 }
 
+export function kickByUUID(uuid){
+    if(server){
+        server.clients.forEach((client,i)=>{
+            if(client?.uuid==uuid){
+                client.close()
+                DB.PLAYERS.users[uuid].isActive = false
+                saveJSONS({players:true})
+            }
+        })
+    }
+}
 
 function saveJSONS(save) {
     console.log(save)
-    if (save?.players) writeMyFile("./players.json",DB.PLAYERS)
+    if (save?.players) writeMyFile("./players.json", DB.PLAYERS)
 }
 
 

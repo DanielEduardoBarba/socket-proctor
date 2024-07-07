@@ -31,7 +31,8 @@ export async function identifyPlayer(req, res, client, save) {
     if (profile?.uuid) {
         client.profile = { ...profile }
         client.uuid = profile?.uuid 
-        DB.PLAYERS.users[profile?.uuid] = profile
+        DB.PLAYERS.users[profile?.uuid] = {...profile}
+        DB.PLAYERS.users[profile?.uuid].isActive = true
         res.cmd = "NO RETURN"
         save.players=true
     } else {
