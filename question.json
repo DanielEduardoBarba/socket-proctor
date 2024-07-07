@@ -1,0 +1,11 @@
+{
+    "exams":[{
+        "name":"add.js",
+        "info":"Make a script that takes two arguments 50 and 32 and adds them",
+        "answer":82
+    },{
+        "name":"subtract.js",
+        "info":"Make a script that takes two arguments 40 and 20 and subtracts them",
+        "answer":20
+    }]
+}
