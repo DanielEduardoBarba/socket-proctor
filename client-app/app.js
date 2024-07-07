@@ -1,11 +1,14 @@
-import { spawn } from 'child_process'
+import { exec, spawn } from 'child_process'
 import { WebSocket } from 'ws'
 
 const args = process.argv.slice(2)
 
-const serverUrl = "ws://localhost:5000"
-let ws
+const response = await runSysCmd("avahi-resolve -n rock-coders-server.local")
+const ip = response.trim().split("\t")[0]
+let serverIp=`ws://${ip}:5000`
+console.log("FOUND SERVER AT: ", ip)
 
+let ws
 function connectToServer(url) {
     ws = new WebSocket(url)
 
@@ -13,7 +16,7 @@ function connectToServer(url) {
         ws = null
         console.log("Attempting reconnection...")
         setTimeout(() => {
-            connectToServer(serverUrl)
+            connectToServer(serverIp)
         }, 1000)
     })
     ws.on("open", () => {
@@ -52,5 +55,23 @@ async function runNode(args) {
 }
 
 
-connectToServer(serverUrl)
+connectToServer(serverIp)
 await runNode(args)
+
+
+
+export async function runSysCmd(cmd,isShow){
+    return new Promise((resolve,reject)=>{
+
+        exec(cmd,(error, stdout, stderr)=>{
+            if(error){
+                console.log(error)
+            }
+            if(stdout) resolve(stdout)
+            if(stderr){
+                console.log(stderr)
+                resolve(stderr)
+            }
+        })
+    })
+} 
