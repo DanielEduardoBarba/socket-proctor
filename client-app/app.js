@@ -1,17 +1,141 @@
 import { exec, spawn } from 'child_process'
 import { WebSocket } from 'ws'
-import { readFile } from 'fs'
+import { readFile, writeFile } from 'fs'
 import PROFILEJSON from './rock_profile.json' assert{type: "json"}
+import readline from 'readline'
+export const CC = {
+    // Reset
+    Reset: "\x1b[0m",
 
+    // Text styles
+    Bright: "\x1b[1m",
+    Dim: "\x1b[2m",
+    Underline: "\x1b[4m",
+    Blink: "\x1b[5m",
+    Reverse: "\x1b[7m",
+    Hidden: "\x1b[8m",
+
+    // Foreground colors
+    Black: "\x1b[30m",
+    Red: "\x1b[31m",
+    Green: "\x1b[32m",
+    Yellow: "\x1b[33m",
+    Blue: "\x1b[34m",
+    Magenta: "\x1b[35m",
+    Cyan: "\x1b[36m",
+    White: "\x1b[37m",
+    BrightBlack: "\x1b[90m",
+    BrightRed: "\x1b[91m",
+    BrightGreen: "\x1b[92m",
+    BrightYellow: "\x1b[93m",
+    BrightBlue: "\x1b[94m",
+    BrightMagenta: "\x1b[95m",
+    BrightCyan: "\x1b[96m",
+    BrightWhite: "\x1b[97m",
+
+    // Background colors
+    BgBlack: "\x1b[40m",
+    BgRed: "\x1b[41m",
+    BgGreen: "\x1b[42m",
+    BgYellow: "\x1b[43m",
+    BgBlue: "\x1b[44m",
+    BgMagenta: "\x1b[45m",
+    BgCyan: "\x1b[46m",
+    BgWhite: "\x1b[47m",
+    BgBrightBlack: "\x1b[100m",
+    BgBrightRed: "\x1b[101m",
+    BgBrightGreen: "\x1b[102m",
+    BgBrightYellow: "\x1b[103m",
+    BgBrightBlue: "\x1b[104m",
+    BgBrightMagenta: "\x1b[105m",
+    BgBrightCyan: "\x1b[106m",
+    BgBrightWhite: "\x1b[107m"
+}
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+})
+
+const prompt = (question) => new Promise((resolve) => {
+    rl.question(question, (answer) => {
+        resolve(answer.trim())
+    })
+})
+
+async function createSaveProfile() {
+    console.log(CC.BrightCyan, CC.Underline, "SETUP MODE", CC.Reset)
+    const name = await prompt(`${CC.Cyan}Enter name:${CC.Magenta} `)
+    const uuid = await prompt(`${CC.Cyan}Enter a UUID(can be random, phone number, etc..):${CC.Magenta} `)
+    console.log(CC.Reset)
+    profile.name = name
+    profile.uuid = uuid
+    await writeMyFile(profileFile, profile)
+    console.log(CC.BrightGreen, "Your Profile has been created/saved!", CC.Reset)
+    process.exit(0)
+}
+async function changeServer() {
+    console.log(CC.BrightCyan, CC.Underline, "SETUP MODE", CC.Reset)
+    const serverName = await prompt(`${CC.Cyan}Enter server name:${CC.Magenta} `)
+    console.log(CC.Reset)
+    profile.serverName = serverName 
+    await writeMyFile(profileFile, profile)
+    console.log(CC.BrightGreen, "Server name saved!", CC.Reset)
+    process.exit(0)
+}
+async function confirmPromptDelete() {
+    console.log(CC.BrightCyan, CC.Underline, "DELETE PROFILE", CC.Reset)
+    const ans = await prompt(`${CC.Red}Confirm deletion with Y:${CC.Yellow} `)
+    if (String(ans).toUpperCase() === "Y") {
+        console.log(CC.Blue, "Deleting profile...", CC.Reset)
+        runSysCmd(`sudo rm ${profileFile}`)
+        console.log(CC.BrightGreen, "Deleted!", CC.Reset)
+    }
+
+    process.exit(0)
+}
+
+function parseFlags(args) {
+    const flags = {}
+    let currentFlag = null
+
+    for (let i = 2; i < args.length; i++) {
+        const arg = args[i]
+
+        if (arg.startsWith('-')) {
+            // Remove leading dashes
+            currentFlag = arg.slice(1)
+            flags[currentFlag] = true // Initialize flag with true
+        } else if (currentFlag) {
+            // Add value to current flag
+            flags[currentFlag] = arg
+            currentFlag = null // Reset current flag
+        }
+    }
+
+    console.log("FLAGS:", flags)
+    return flags
+}
+
+// Parse command-line arguments
+const flags = parseFlags(process.argv)
 const args = process.argv.slice(2)
-let profile = PROFILEJSON
 const rootProfileDir = "/var/lib/rock-coders-server"
 const profileJson = "rock_profile.json"
+const profileFile = `${rootProfileDir}/${profileJson}`
+let profile = PROFILEJSON
+
 await runSysCmd(`sudo mkdir ${rootProfileDir}`)
-let response = await readMyFile(`${rootProfileDir}/${profileJson}`)
+let response = await readMyFile(profileFile)
 if (response) profile = response
 
+if (flags?.setup) await createSaveProfile()
+else if (flags?.delete) await confirmPromptDelete() 
+else if (flags?.server) await changeServer()
+    
 console.log("profile:", profile)
+
+
+
 const serverUrl = await getServer()
 console.log("FOUND SERVER AT: ", serverUrl)
 //function-----------------------------
@@ -63,7 +187,15 @@ async function avahiResolve(name) {
 }
 let ws
 function connectToServer(url) {
-    ws = new WebSocket(url)
+    try {
+        ws = new WebSocket(url)
+
+    } catch (err) {
+        setTimeout(() => {
+            connectToServer(serverUrl)
+        }, 1000)
+        return
+    }
 
     ws.on("close", () => {
         ws = null
@@ -173,6 +305,23 @@ export function readMyFile(file, type = "json") {
         })
     })
 }
+export function writeMyFile(file, data, type = "json") {
+    return new Promise((resolve, reject) => {
+
+        if (type == "json") {
+            const jsonData = JSON.stringify(data)
+            writeFile(file, jsonData, 'utf8', (err) => {
+                if (err) {
+                    console.error('Error writing file:', err)
+                }
+                // console.log(`Data has been written to ${file}`)
+                resolve()
+            })
+
+        }
+    })
+}
+
 
 
 

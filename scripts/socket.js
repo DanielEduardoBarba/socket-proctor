@@ -1,12 +1,13 @@
 import { WebSocketServer } from "ws"
-import { initializeRoutes, checkAnswer } from "./routes.js"
+import { initializeRoutes, checkAnswer, identifyPlayer } from "./routes.js"
+import { CC, writeMyFile } from "../index.js"
 
 let DB
 
 export async function initializeSocket($DB) {
     DB = $DB
     startServer()
-    initializeRoutes()
+    initializeRoutes($DB)
 }
 
 function getIP(req) {
@@ -35,27 +36,19 @@ function startServer() {
                 return
             }
             let res = { ...req }
+            const save = { players: false }
             switch (req.cmd) {
-                case "SERVER_SUBMIT_ANSWER":await checkAnswer(req,res)
+                case "SERVER_SUBMIT_ANSWER": await checkAnswer(req, res, client, save)
                     break
-                    case "SERVER_IDENTIFY":
-                        var profile=req?.data
-                        if(profile?.uuid){
-                            client.profile={...profile}
-                            client.uuid=profile?.uuid
-                            res.cmd!=="NO RETURN"
-                        }else{
-                            res.cmd="CLIENT_NOTIFY"
-                            res.type="exit"
-                            res.data="Your profile is missing a UUID\n please run command to create profile"
-                        }
-                        break
+                case "SERVER_IDENTIFY": await identifyPlayer(req, res, client, save)
+
+                    break
                 default:
-                    console.log("TYPE not recognized!")
+                    console.log(CC.BgBlue, "TYPE not recognized!", CC.Reset)
                     break
             }
-            if(res.cmd!=="NO RETURN")client.send(JSON.stringify(res))
-
+            if (res.cmd !== "NO RETURN") client.send(JSON.stringify(res))
+            saveJSONS(save)
         })
 
         client.on("close", () => {
@@ -64,6 +57,12 @@ function startServer() {
 
 
     })
+}
+
+
+function saveJSONS(save) {
+    console.log(save)
+    if (save?.players) writeMyFile("./players.json",DB.PLAYERS)
 }
 
 
